@@ -15,7 +15,6 @@ const getURLsFromHTML = (htmlBody, baseURL) => {
     const links = dom.window.document.querySelectorAll('a');
     const urls = [];
     for (let link of links) {
-        // Resolve relative URLs against the base URL
         const resolvedUrl = new URL(link.href, baseUrlObject).href;
         urls.push(resolvedUrl);
     }
@@ -26,7 +25,7 @@ export async function crawlPage(baseURL, currentURL, pages) {
     const baseURLObject = new URL(baseURL);
     const currentURLObject = new URL(currentURL);
     if (baseURLObject.hostname !== currentURLObject.hostname) {
-        // console.log(`Skipping external link: ${currentURL}`);
+        console.log(`Skipping external link: ${currentURL}`);
         return pages;
     }
     const normalizedURL = normalizeURL(currentURL);
@@ -43,13 +42,12 @@ export async function crawlPage(baseURL, currentURL, pages) {
         }
         const contentType = response.headers.get('content-type');
         if (!contentType.includes('text/html')) {
-            // console.log(`Skipping non-HTML page: ${currentURL}`);
+            console.log(`Skipping non-HTML page: ${currentURL}`);
             return;
         }
 
         const htmlBody = await response.text();
         const links = getURLsFromHTML(htmlBody, currentURL);
-        // console.log("Links found on page:", links);
         for (let link of links) {
             await crawlPage(baseURL, link, pages);
         }
@@ -57,7 +55,6 @@ export async function crawlPage(baseURL, currentURL, pages) {
     } catch (err) {
         console.error(err);
     }
-    // console.log(pages);
     return pages;
 }
 

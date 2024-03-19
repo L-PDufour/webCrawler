@@ -10,31 +10,55 @@ const normalizeURL = (url) => {
 }
 
 const getURLsFromHTML = (htmlBody, baseURL) => {
-
-    const dom = new JSDOM(htmlBody)
-    const links = dom.window.document.querySelectorAll('a')
-    const urls = []
+    const dom = new JSDOM(htmlBody, { url: baseURL });
+    const baseUrlObject = new URL(baseURL);
+    const links = dom.window.document.querySelectorAll('a');
+    const urls = [];
     for (let link of links) {
-        urls.push(link.href)
+        // Resolve relative URLs against the base URL
+        const resolvedUrl = new URL(link.href, baseUrlObject).href;
+        urls.push(resolvedUrl);
     }
-    return urls
+    return urls;
 }
 
-export const crawlPage = async (url) => {
+export async function crawlPage(baseURL, currentURL, pages) {
+    const baseURLObject = new URL(baseURL);
+    const currentURLObject = new URL(currentURL);
+    if (baseURLObject.hostname !== currentURLObject.hostname) {
+        // console.log(`Skipping external link: ${currentURL}`);
+        return pages;
+    }
+    const normalizedURL = normalizeURL(currentURL);
+    if (pages[normalizedURL]) {
+        pages[normalizedURL]++;
+        return pages;
+    }
+    pages[normalizedURL] = 1;
+
     try {
-        const response = await fetch(url);
+        const response = await fetch(currentURL);
         if (response.status !== 200) {
             throw new Error(`Failed to fetch page: ${url}`);
         }
         const contentType = response.headers.get('content-type');
         if (!contentType.includes('text/html')) {
-            console.log(`Skipping non-HTML page: ${url}`);
+            // console.log(`Skipping non-HTML page: ${currentURL}`);
             return;
         }
-        console.log(await response.text());
+
+        const htmlBody = await response.text();
+        const links = getURLsFromHTML(htmlBody, currentURL);
+        // console.log("Links found on page:", links);
+        for (let link of links) {
+            await crawlPage(baseURL, link, pages);
+        }
+
     } catch (err) {
         console.error(err);
     }
+    // console.log(pages);
+    return pages;
 }
 
 
